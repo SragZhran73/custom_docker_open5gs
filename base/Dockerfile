@@ -67,8 +67,8 @@ RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg -
     apt-get update && apt install nodejs -y
 
 # Get open5gs code and install
-RUN git clone --recursive https://github.com/open5gs/open5gs && cd open5gs && \
-    git checkout 322719f3e729aafacf531e85552d7a977fff3e2a && meson build --prefix=`pwd`/install && \
+RUN git clone --recursive https://gitlab.tech.orange/win/oinis/olb-2g6/open5gs.git && cd open5gs && \
+    && meson build --prefix=`pwd`/install && \
     ninja -C build && cd build && ninja install && \
     mkdir -p /open5gs/install/include
 
@@ -108,6 +108,11 @@ RUN apt-get update && \
 
 RUN pip3 install click
 
+RUN addgroup -g 1000 open5gs && adduser -D -G open5gs open5gs -u 1000 -s /bin/sh \
+    && mkdir /open5gs && chwon open5gs:open5gs /open5gs
+
+USER 1000 
+
 RUN mkdir -p /etc/apt/keyrings
 RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
     NODE_MAJOR=20 && \
@@ -116,15 +121,27 @@ RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg -
 
 RUN update-ca-certificates
 
-COPY --from=builder /open5gs/install/bin /open5gs/install/bin
-COPY --from=builder /open5gs/install/etc /open5gs/install/etc
-COPY --from=builder /open5gs/install/include /open5gs/install/include
-COPY --from=builder /open5gs/install/lib /open5gs/install/lib
-COPY --from=builder /open5gs/webui /open5gs/webui
-COPY --from=builder /open5gs/misc/db /open5gs/misc/db
+WORKDIR /open5gs
+
+
+
+COPY --chown=open5gs:open5gs --from=builder /open5gs/install/bin /open5gs/install/bin
+COPY --chown=open5gs:open5gs --from=builder /open5gs/install/etc /open5gs/install/etc
+COPY --chown=open5gs:open5gs --from=builder /open5gs/install/include /open5gs/install/include
+COPY --chown=open5gs:open5gs --from=builder /open5gs/install/lib /open5gs/install/lib
+COPY --chown=open5gs:open5gs --from=builder/open5gs/webui /open5gs/webui
+COPY --chown=open5gs:open5gs --from=builder /open5gs/misc/db /open5gs/misc/db
+
+COPY --chown=open5gs:open5gs grafana /open5gs/CNF/grafana
+COPY --chown=open5gs:open5gs hss /open5gs/CNF/hss
+COPY --chown=open5gs:open5gs metrics /open5gs/CNF/metrics
+COPY --chown=open5gs:open5gs mme /open5gs/CNF/mme
+COPY --chown=open5gs:open5gs sgwu /open5gs/CNF/sgwu
+COPY --chown=open5gs:open5gs pcrf /open5gs/CNF/pcrf
+COPY --chown=open5gs:open5gs sgwc /open5gs/CNF/sgwc
 
 # Set the working directory to open5gs
-WORKDIR open5gs
+
 
 COPY open5gs_init.sh /
 CMD /open5gs_init.sh
